@@ -14,7 +14,7 @@ function row(i: ItemResult): string {
   const drift = i.drifted ? ` <span class="drift">▼${Math.round((i.was! - i.rate) * 100)}</span>` : '';
   const note = i.pass
     ? esc(i.note ? i.note : `${i.checks} check${i.checks === 1 ? '' : 's'}`)
-    : esc(i.note ?? 'below the required rate').replace(/^(runs? [\d, ]+: )(.*)$/, '$1<b>$2</b>');
+    : esc(i.note ?? 'below the required rate').replace(/^((?:every run|runs? [\d, ]+): )(.*)$/, '$1<b>$2</b>');
   return `<tr><td class="id">${esc(i.id)}${i.description ? `<small>${esc(i.description)}</small>` : ''}</td>`
     + `<td class="runs">${runs}</td>`
     + `<td class="rate">${pct(i.rate)}<small>need ${pct(i.need)}${was}${drift}</small></td>`

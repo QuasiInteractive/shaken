@@ -97,13 +97,22 @@ export function grade(it: Item, runs: RunResult[], cfg: Pick<Config, 'pass_rate'
   return { id: it.id, part: it.part, description: it.description, checks: it.checks.length, runs, rate, need, was, drifted, pass, note: commonFailure(runs) };
 }
 
+// Judge and vehicle failures are worded differently every run, so they group by kind;
+// deterministic failures group by their exact reason.
+const kind = (reason: string) => (/^(judge|vehicle):/.test(reason) ? reason.split(':')[0] : reason);
+
 function commonFailure(runs: RunResult[]): string | undefined {
-  const counts = new Map<string, number>();
-  for (const r of runs) if (!r.pass && r.reason) counts.set(r.reason, (counts.get(r.reason) ?? 0) + 1);
-  const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+  const groups = new Map<string, number[]>();
+  runs.forEach((r, i) => {
+    if (r.pass || !r.reason) return;
+    const k = kind(r.reason);
+    groups.set(k, [...(groups.get(k) ?? []), i]);
+  });
+  const top = [...groups.values()].sort((a, b) => b.length - a.length)[0];
   if (!top) return undefined;
-  const which = runs.map((r, i) => (!r.pass && r.reason === top[0] ? i + 1 : 0)).filter(Boolean);
-  return `run${which.length > 1 ? 's' : ''} ${which.join(', ')}: ${top[0]}`;
+  const which = top.map((i) => i + 1);
+  const label = which.length === runs.length && runs.length > 1 ? 'every run' : `run${which.length > 1 ? 's' : ''} ${which.join(', ')}`;
+  return `${label}: ${runs[top[0]].reason}`;
 }
 
 export function measure(runs: RunResult[], cfg: Pick<Config, 'emissions'>, judgeCalls: number, judgeSaved: number): Emissions {

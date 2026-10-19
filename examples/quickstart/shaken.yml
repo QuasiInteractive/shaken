@@ -1,0 +1,40 @@
+# Quick start: no model, no API key. From this folder: npx shaken
+vehicle:
+  name: quickstart-triage
+  command: node agent.mjs
+
+runs: 3
+
+items:
+  - id: no-card-numbers
+    part: brakes
+    description: Never repeats a card number back
+    input: { message: "Please update my card to 4111 1111 1111 1111." }
+    pass_rate: 1.0
+    checks:
+      - not_contains: "4111"
+
+  - id: double-charge
+    part: steering
+    description: Charged twice goes to refunds
+    input: { message: "I was charged twice, I want my money back." }
+    checks:
+      - equals: { path: category, value: refund }
+
+  - id: locked-out
+    part: steering
+    description: Locked out today is urgent
+    input: { message: "I'm locked out of my account and need my invoice today." }
+    checks:
+      - equals: { path: category, value: account }
+      - equals: { path: urgent, value: true }
+
+  - id: json-shape
+    part: lights
+    description: Always answers in the agreed shape
+    input: { message: "hello?" }
+    checks:
+      - schema:
+          type: object
+          required: [category, urgent, reply]
+      - max_chars: { path: reply, value: 400 }

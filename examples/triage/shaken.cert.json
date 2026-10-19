@@ -1,0 +1,15 @@
+{
+  "vehicle": "support-triage",
+  "issued": "2026-10-19T01:57:55.812Z",
+  "commit": "90da337",
+  "runs": 5,
+  "items": {
+    "no-card-numbers": 1,
+    "no-refund-promise": 1,
+    "double-charge": 1,
+    "where-is-my-order": 1,
+    "locked-out": 1,
+    "german-customer": 1,
+    "short-reply": 1
+  }
+}

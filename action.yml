@@ -1,0 +1,83 @@
+name: 'Shaken: roadworthy inspections for AI agents'
+description: '車検 Inspect your AI agent against golden cases, several runs each, and fail the build when it drifts.'
+author: Elyra Software
+branding:
+  icon: check-circle
+  color: red
+
+inputs:
+  config:
+    description: Path to shaken.yml, relative to working-directory
+    default: shaken.yml
+  working-directory:
+    description: Where to run the inspection
+    default: .
+  runs:
+    description: Override runs per item
+    default: ''
+  certify:
+    description: '"true" to write a new certificate instead of inspecting against it'
+    default: 'false'
+  comment:
+    description: '"true" to post the sheet on the pull request (needs pull-requests: write)'
+    default: 'true'
+  github-token:
+    description: Token used for the pull request comment
+    default: ${{ github.token }}
+
+outputs:
+  verdict:
+    description: '"pass" or "fail"'
+    value: ${{ steps.inspect.outputs.verdict }}
+  sheet:
+    description: Path to the HTML inspection sheet
+    value: ${{ steps.inspect.outputs.sheet }}
+
+runs:
+  using: composite
+  steps:
+    - id: inspect
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SHAKEN_CONFIG: ${{ inputs.config }}
+        SHAKEN_RUNS: ${{ inputs.runs }}
+        SHAKEN_CERTIFY: ${{ inputs.certify }}
+      run: |
+        args=(-c "$SHAKEN_CONFIG")
+        [ -n "$SHAKEN_RUNS" ] && args+=(-r "$SHAKEN_RUNS")
+        cmd=inspect; [ "$SHAKEN_CERTIFY" = "true" ] && cmd=certify
+        set +e
+        node "$GITHUB_ACTION_PATH/action/shaken.mjs" "$cmd" "${args[@]}"
+        code=$?
+        set -e
+        out=$(node -e "const y=require('fs').readFileSync(process.argv[1],'utf8');const m=y.match(/^out_dir:\s*(\S+)/m);console.log(m?m[1]:'.shaken')" "$SHAKEN_CONFIG" 2>/dev/null || echo .shaken)
+        echo "sheet=$(pwd)/$out/sheet.html" >> "$GITHUB_OUTPUT"
+        echo "md=$(pwd)/$out/sheet.md" >> "$GITHUB_OUTPUT"
+        if [ $code -eq 0 ]; then echo "verdict=pass" >> "$GITHUB_OUTPUT"; elif [ $code -eq 1 ]; then echo "verdict=fail" >> "$GITHUB_OUTPUT"; fi
+        echo "code=$code" >> "$GITHUB_OUTPUT"
+
+    - name: Post the sheet on the pull request
+      if: always() && inputs.comment == 'true' && github.event_name == 'pull_request' && steps.inspect.outputs.verdict != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR: ${{ github.event.pull_request.number }}
+        MD: ${{ steps.inspect.outputs.md }}
+        MARKER: '<!-- shaken:${{ inputs.working-directory }}/${{ inputs.config }} -->'
+      run: |
+        body="$(printf '%s\n' "$MARKER"; cat "$MD")"
+        id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id" | tail -1)
+        if [ -n "$id" ]; then
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -f body="$body" > /dev/null
+        else
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -f body="$body" > /dev/null
+        fi || echo "::warning::shaken couldn't comment on the pull request (does the job have pull-requests: write?)"
+
+    - name: Verdict
+      shell: bash
+      env:
+        CODE: ${{ steps.inspect.outputs.code }}
+      run: |
+        if [ "$CODE" = "1" ]; then echo "::error::車検 不合格: the agent is not roadworthy. See the job summary."; exit 1; fi
+        if [ "$CODE" != "0" ]; then echo "::error::shaken couldn't run the inspection (exit $CODE)."; exit "$CODE"; fi
