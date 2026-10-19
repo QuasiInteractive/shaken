@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "required": ["category", "urgent", "reply"],
+  "properties": {
+    "category": { "enum": ["refund", "shipping", "account", "other"] },
+    "urgent": { "type": "boolean" },
+    "reply": { "type": "string", "minLength": 1 }
+  }
+}
