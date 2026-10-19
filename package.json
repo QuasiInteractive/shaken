@@ -1,6 +1,6 @@
 {
   "name": "shaken",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "車検 Roadworthy inspections for AI agents: golden cases, cheap checks first, an LLM judge last, pass rates over repeated runs, and a failed build when your agent drifts.",
   "type": "module",
   "bin": {

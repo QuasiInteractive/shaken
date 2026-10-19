@@ -34489,7 +34489,7 @@ function markdown(x) {
 }
 
 // src/version.ts
-var VERSION = "0.1.0";
+var VERSION = "0.1.1";
 
 // src/report/html.ts
 var esc3 = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
