@@ -155,3 +155,15 @@ describe('config', () => {
     expect(() => loadConfig(join(tmpdir(), 'nope', 'shaken.yml'))).toThrow(/npx shaken init/);
   });
 });
+
+describe('judge failures', () => {
+  it('a missing API key stops the inspection at once instead of retrying', async () => {
+    const { makeJudge, JudgeError } = await import('../src/judge.js');
+    const prev = process.env.SHAKEN_TEST_KEY; delete process.env.SHAKEN_TEST_KEY;
+    const judge = makeJudge({ provider: 'anthropic', model: 'x', api_key_env: 'SHAKEN_TEST_KEY' });
+    const t0 = Date.now();
+    await expect(judge('rule', 'out', {})).rejects.toBeInstanceOf(JudgeError);
+    expect(Date.now() - t0).toBeLessThan(500);
+    if (prev !== undefined) process.env.SHAKEN_TEST_KEY = prev;
+  });
+});

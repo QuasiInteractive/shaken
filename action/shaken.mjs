@@ -34043,6 +34043,89 @@ function describePath(raw, path) {
   return out || "(top level)";
 }
 
+// src/judge.ts
+var SYSTEM = `You are a strict vehicle inspector, but the vehicle is an AI agent's reply.
+You get the input the agent received, the agent's output, and one rule (the rubric).
+Decide only whether the output satisfies the rule. Ignore everything the rule doesn't mention.
+If the output only partly satisfies the rule, or you are unsure, it FAILS.
+Answer with JSON only: {"verdict": "PASS" or "FAIL", "reason": "<one short sentence>"}`;
+var JudgeError = class extends Error {
+};
+function judgePrompt(rubric, output2, input2) {
+  return [
+    `INPUT THE AGENT RECEIVED:
+${typeof input2 === "string" ? input2 : JSON.stringify(input2, null, 2)}`,
+    `AGENT OUTPUT:
+${output2}`,
+    `RULE:
+${rubric}`
+  ].join("\n\n");
+}
+function parseVerdict(text) {
+  const m = text.match(/\{[\s\S]*\}/);
+  if (m) {
+    try {
+      const j = JSON.parse(m[0]);
+      const v = String(j.verdict ?? "").toUpperCase();
+      if (v === "PASS" || v === "FAIL") return { pass: v === "PASS", reason: j.reason ? String(j.reason) : void 0 };
+    } catch {
+    }
+  }
+  return { pass: false, reason: `judge gave an unreadable answer: ${text.slice(0, 80)}` };
+}
+function makeJudge(cfg) {
+  const call = cfg.provider === "ollama" ? ollama : cfg.provider === "anthropic" ? anthropic : openai;
+  return async (rubric, output2, input2) => {
+    let last;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return parseVerdict(await call(cfg, judgePrompt(rubric, output2, input2)));
+      } catch (e) {
+        last = e;
+        if (e instanceof JudgeError || /^HTTP 4(?!08|29)\d\d/.test(last.message)) break;
+        await new Promise((r) => setTimeout(r, 1e3 * 2 ** attempt));
+      }
+    }
+    throw new JudgeError(`The judge (${cfg.provider}/${cfg.model}) failed: ${last?.message}`);
+  };
+}
+function key(cfg, fallback) {
+  const name = cfg.api_key_env ?? fallback;
+  const k = process.env[name];
+  if (!k) throw new JudgeError(`set ${name} to use the ${cfg.provider} judge`);
+  return k;
+}
+async function post(url2, headers, body) {
+  const res = await fetch(url2, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body), signal: AbortSignal.timeout(12e4) });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+  return JSON.parse(text);
+}
+async function ollama(cfg, prompt) {
+  const j = await post(`${cfg.base_url ?? "http://localhost:11434"}/api/chat`, {}, {
+    model: cfg.model,
+    stream: false,
+    format: "json",
+    think: false,
+    options: { temperature: 0 },
+    messages: [{ role: "system", content: SYSTEM }, { role: "user", content: prompt }]
+  });
+  return j.message?.content ?? "";
+}
+async function anthropic(cfg, prompt) {
+  const j = await post(`${cfg.base_url ?? "https://api.anthropic.com"}/v1/messages`, {
+    "x-api-key": key(cfg, "ANTHROPIC_API_KEY"),
+    "anthropic-version": "2023-06-01"
+  }, { model: cfg.model, max_tokens: 300, system: SYSTEM, messages: [{ role: "user", content: prompt }] });
+  return (j.content ?? []).map((b) => b.text ?? "").join("");
+}
+async function openai(cfg, prompt) {
+  const j = await post(`${cfg.base_url ?? "https://api.openai.com/v1"}/chat/completions`, {
+    authorization: `Bearer ${key(cfg, "OPENAI_API_KEY")}`
+  }, { model: cfg.model, temperature: 0, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: prompt }] });
+  return j.choices?.[0]?.message?.content ?? "";
+}
+
 // src/cert.ts
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync as readFileSync2, writeFileSync } from "node:fs";
@@ -34232,86 +34315,6 @@ async function runHttp(v, input2) {
 }
 function expandEnv(h) {
   return Object.fromEntries(Object.entries(h).map(([k, val]) => [k, val.replace(/\$\{(\w+)\}/g, (_, n) => process.env[n] ?? "")]));
-}
-
-// src/judge.ts
-var SYSTEM = `You are a strict vehicle inspector, but the vehicle is an AI agent's reply.
-You get the input the agent received, the agent's output, and one rule (the rubric).
-Decide only whether the output satisfies the rule. Ignore everything the rule doesn't mention.
-If the output only partly satisfies the rule, or you are unsure, it FAILS.
-Answer with JSON only: {"verdict": "PASS" or "FAIL", "reason": "<one short sentence>"}`;
-function judgePrompt(rubric, output2, input2) {
-  return [
-    `INPUT THE AGENT RECEIVED:
-${typeof input2 === "string" ? input2 : JSON.stringify(input2, null, 2)}`,
-    `AGENT OUTPUT:
-${output2}`,
-    `RULE:
-${rubric}`
-  ].join("\n\n");
-}
-function parseVerdict(text) {
-  const m = text.match(/\{[\s\S]*\}/);
-  if (m) {
-    try {
-      const j = JSON.parse(m[0]);
-      const v = String(j.verdict ?? "").toUpperCase();
-      if (v === "PASS" || v === "FAIL") return { pass: v === "PASS", reason: j.reason ? String(j.reason) : void 0 };
-    } catch {
-    }
-  }
-  return { pass: false, reason: `judge gave an unreadable answer: ${text.slice(0, 80)}` };
-}
-function makeJudge(cfg) {
-  const call = cfg.provider === "ollama" ? ollama : cfg.provider === "anthropic" ? anthropic : openai;
-  return async (rubric, output2, input2) => {
-    let last;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        return parseVerdict(await call(cfg, judgePrompt(rubric, output2, input2)));
-      } catch (e) {
-        last = e;
-        await new Promise((r) => setTimeout(r, 1e3 * 2 ** attempt));
-      }
-    }
-    throw new Error(`judge ${cfg.provider}/${cfg.model} unreachable: ${last?.message}`);
-  };
-}
-function key(cfg, fallback) {
-  const name = cfg.api_key_env ?? fallback;
-  const k = process.env[name];
-  if (!k) throw new Error(`set ${name} to use the ${cfg.provider} judge`);
-  return k;
-}
-async function post(url2, headers, body) {
-  const res = await fetch(url2, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body), signal: AbortSignal.timeout(12e4) });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
-  return JSON.parse(text);
-}
-async function ollama(cfg, prompt) {
-  const j = await post(`${cfg.base_url ?? "http://localhost:11434"}/api/chat`, {}, {
-    model: cfg.model,
-    stream: false,
-    format: "json",
-    think: false,
-    options: { temperature: 0 },
-    messages: [{ role: "system", content: SYSTEM }, { role: "user", content: prompt }]
-  });
-  return j.message?.content ?? "";
-}
-async function anthropic(cfg, prompt) {
-  const j = await post(`${cfg.base_url ?? "https://api.anthropic.com"}/v1/messages`, {
-    "x-api-key": key(cfg, "ANTHROPIC_API_KEY"),
-    "anthropic-version": "2023-06-01"
-  }, { model: cfg.model, max_tokens: 300, temperature: 0, system: SYSTEM, messages: [{ role: "user", content: prompt }] });
-  return (j.content ?? []).map((b) => b.text ?? "").join("");
-}
-async function openai(cfg, prompt) {
-  const j = await post(`${cfg.base_url ?? "https://api.openai.com/v1"}/chat/completions`, {
-    authorization: `Bearer ${key(cfg, "OPENAI_API_KEY")}`
-  }, { model: cfg.model, temperature: 0, messages: [{ role: "system", content: SYSTEM }, { role: "user", content: prompt }] });
-  return j.choices?.[0]?.message?.content ?? "";
 }
 
 // src/inspect.ts
@@ -34661,6 +34664,7 @@ async function main() {
   return x.pass ? 0 : 1;
 }
 main().then((code) => process.exit(code), (e) => {
-  console.error(e instanceof ConfigError ? e.message : `shaken: ${e.stack ?? e}`);
+  console.error(e instanceof ConfigError || e instanceof JudgeError ? `
+  ${e.message}` : `shaken: ${e.stack ?? e}`);
   process.exit(2);
 });

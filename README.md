@@ -7,7 +7,7 @@ the same for your AI agent. It runs your agent through golden test cases several
 uses cheap checks first and an LLM judge last, and issues a certificate: **合格 PASS** or **不合格 FAIL**.
 In CI it blocks the merge when an agent that used to pass starts to drift.
 
-![A failed inspection sheet: the brakes item no-refund-promise dropped from 100% to 0% after a prompt change, and the sheet is stamped 不合格 FAIL](docs/sheet-fail.png)
+![A failed inspection sheet: the brakes item no-refund-promise dropped from 100% to 0% after a prompt change, and the sheet is stamped 不合格 FAIL](https://raw.githubusercontent.com/QuasiInteractive/shaken/main/docs/sheet-fail.png)
 
 *A real inspection. A harmless-looking prompt change ("customers hate vague answers, give a concrete
 timeline") made a support agent promise refund dates in 5 of 5 runs. The change looked fine in review; Shaken refused it.*
@@ -26,8 +26,16 @@ git clone https://github.com/QuasiInteractive/shaken && cd shaken/examples/quick
 npx shaken
 ```
 
-Then try [`examples/triage`](examples/triage). It's a real LLM support agent on a local Ollama model,
+Then try [`examples/triage`](https://github.com/QuasiInteractive/shaken/tree/main/examples/triage). It's a real LLM support agent on a local Ollama model,
 judged by a local model, so it costs $0.
+
+## In the wild
+
+[Mule Crew](https://github.com/QuasiInteractive/mule-crew), a crew of AI agents running a sticker
+shop, gets inspected with nine items built from real tickets ([its shaken.yml](https://github.com/QuasiInteractive/mule-crew/blob/main/shaken.yml)).
+On its first inspection Shaken caught the triage agent forgetting that *"need them for an event on Saturday"*
+is urgent in 1 of 3 runs. Mule Crew's old one-pass scoreboard would have passed that two times out of three.
+After a prompt fix, it passed 5 of 5.
 
 ## Use it on your agent
 

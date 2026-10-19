@@ -9,6 +9,9 @@ Decide only whether the output satisfies the rule. Ignore everything the rule do
 If the output only partly satisfies the rule, or you are unsure, it FAILS.
 Answer with JSON only: {"verdict": "PASS" or "FAIL", "reason": "<one short sentence>"}`;
 
+// The inspection can't be trusted without its judge, so this stops the run (exit 2) rather than failing items.
+export class JudgeError extends Error {}
+
 export function judgePrompt(rubric: string, output: string, input: unknown): string {
   return [
     `INPUT THE AGENT RECEIVED:\n${typeof input === 'string' ? input : JSON.stringify(input, null, 2)}`,
@@ -39,17 +42,19 @@ export function makeJudge(cfg: JudgeConfig): Judge {
         return parseVerdict(await call(cfg, judgePrompt(rubric, output, input)));
       } catch (e) {
         last = e as Error;
+        // A missing key or a rejected request won't fix itself; only outages and rate limits are worth retrying.
+        if (e instanceof JudgeError || /^HTTP 4(?!08|29)\d\d/.test(last.message)) break;
         await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
       }
     }
-    throw new Error(`judge ${cfg.provider}/${cfg.model} unreachable: ${last?.message}`);
+    throw new JudgeError(`The judge (${cfg.provider}/${cfg.model}) failed: ${last?.message}`);
   };
 }
 
 function key(cfg: JudgeConfig, fallback: string): string {
   const name = cfg.api_key_env ?? fallback;
   const k = process.env[name];
-  if (!k) throw new Error(`set ${name} to use the ${cfg.provider} judge`);
+  if (!k) throw new JudgeError(`set ${name} to use the ${cfg.provider} judge`);
   return k;
 }
 
@@ -68,10 +73,11 @@ async function ollama(cfg: JudgeConfig, prompt: string): Promise<string> {
   return j.message?.content ?? '';
 }
 
+// Newer Claude models reject `temperature`; strictness comes from the system prompt.
 async function anthropic(cfg: JudgeConfig, prompt: string): Promise<string> {
   const j = await post(`${cfg.base_url ?? 'https://api.anthropic.com'}/v1/messages`, {
     'x-api-key': key(cfg, 'ANTHROPIC_API_KEY'), 'anthropic-version': '2023-06-01',
-  }, { model: cfg.model, max_tokens: 300, temperature: 0, system: SYSTEM, messages: [{ role: 'user', content: prompt }] });
+  }, { model: cfg.model, max_tokens: 300, system: SYSTEM, messages: [{ role: 'user', content: prompt }] });
   return (j.content ?? []).map((b: any) => b.text ?? '').join('');
 }
 

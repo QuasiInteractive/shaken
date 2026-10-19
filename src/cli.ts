@@ -6,6 +6,7 @@ import { appendFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { ConfigError, loadConfig } from './config.js';
+import { JudgeError } from './judge.js';
 import { currentCommit, readCert, writeCert } from './cert.js';
 import { inspect } from './inspect.js';
 import { badge } from './report/badge.js';
@@ -96,6 +97,7 @@ async function main(): Promise<number> {
 }
 
 main().then((code) => process.exit(code), (e) => {
-  console.error(e instanceof ConfigError ? e.message : `shaken: ${(e as Error).stack ?? e}`);
+  console.error(e instanceof ConfigError || e instanceof JudgeError ? `
+  ${e.message}` : `shaken: ${(e as Error).stack ?? e}`);
   process.exit(2);
 });
