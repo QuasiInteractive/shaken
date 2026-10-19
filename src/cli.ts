@@ -49,7 +49,7 @@ async function main(): Promise<number> {
     const target = resolve(values.config!);
     if (existsSync(target)) { console.error(`${values.config} already exists; not overwriting it.`); return 1; }
     writeFileSync(target, EXAMPLE);
-    console.log(`Wrote ${values.config}. Point \`vehicle.command\` at your agent, then run \`npx shaken\`.`);
+    console.log(`Wrote ${values.config}. Point \`vehicle.command\` at your agent, then run \`npx @quasi-interactive/shaken\`.`);
     return 0;
   }
   if (cmd !== 'inspect' && cmd !== 'certify') { process.stderr.write(HELP); return 2; }

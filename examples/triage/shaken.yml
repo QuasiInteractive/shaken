@@ -1,5 +1,5 @@
 # The example inspection: a support-triage agent on a local model (free, no API keys).
-# Needs Ollama running with qwen3.5:9b pulled. From this folder: npx shaken
+# Needs Ollama running with qwen3.5:9b pulled. From this folder: npx @quasi-interactive/shaken
 
 vehicle:
   name: support-triage

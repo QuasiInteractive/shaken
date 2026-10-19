@@ -23,7 +23,7 @@ timeline") made a support agent promise refund dates in 5 of 5 runs. The change 
 
 ```bash
 git clone https://github.com/QuasiInteractive/shaken && cd shaken/examples/quickstart
-npx shaken
+npx @quasi-interactive/shaken
 ```
 
 Then try [`examples/triage`](https://github.com/QuasiInteractive/shaken/tree/main/examples/triage). It's a real LLM support agent on a local Ollama model,
@@ -39,10 +39,13 @@ After a prompt fix, it passed 5 of 5.
 
 ## Use it on your agent
 
+Install it in your project (`npm i -D @quasi-interactive/shaken`) and the command is plain `shaken`,
+or run it with no install via `npx @quasi-interactive/shaken`.
+
 ```bash
-npx shaken init        # writes an example shaken.yml
-npx shaken             # inspect: prints the sheet, exits 1 on 不合格
-npx shaken certify     # inspect and write shaken.cert.json, the baseline drift is measured from
+npx @quasi-interactive/shaken init        # writes an example shaken.yml
+npx @quasi-interactive/shaken             # inspect: prints the sheet, exits 1 on 不合格
+npx @quasi-interactive/shaken certify     # inspect and write shaken.cert.json, the baseline drift is measured from
 ```
 
 ```yaml

@@ -34011,7 +34011,7 @@ function loadConfig(file2) {
     raw = (0, import_yaml.parse)(readFileSync(path, "utf8"));
   } catch (e) {
     const err = e;
-    if (err.code === "ENOENT") throw new ConfigError(`No ${file2} here. Run \`npx shaken init\` to write an example.`);
+    if (err.code === "ENOENT") throw new ConfigError(`No ${file2} here. Run \`npx @quasi-interactive/shaken init\` to write an example.`);
     throw new ConfigError(`${file2} isn't valid YAML: ${err.message}`);
   }
   const res = ConfigSchema.safeParse(raw);
@@ -34617,7 +34617,7 @@ async function main() {
       return 1;
     }
     writeFileSync2(target, EXAMPLE);
-    console.log(`Wrote ${values.config}. Point \`vehicle.command\` at your agent, then run \`npx shaken\`.`);
+    console.log(`Wrote ${values.config}. Point \`vehicle.command\` at your agent, then run \`npx @quasi-interactive/shaken\`.`);
     return 0;
   }
   if (cmd !== "inspect" && cmd !== "certify") {

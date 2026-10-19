@@ -152,7 +152,7 @@ describe('config', () => {
   });
 
   it('a missing file says how to start', () => {
-    expect(() => loadConfig(join(tmpdir(), 'nope', 'shaken.yml'))).toThrow(/npx shaken init/);
+    expect(() => loadConfig(join(tmpdir(), 'nope', 'shaken.yml'))).toThrow(/shaken init/);
   });
 });
 

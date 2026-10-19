@@ -84,7 +84,7 @@ export function loadConfig(file: string): Config {
     raw = parse(readFileSync(path, 'utf8'));
   } catch (e) {
     const err = e as NodeJS.ErrnoException;
-    if (err.code === 'ENOENT') throw new ConfigError(`No ${file} here. Run \`npx shaken init\` to write an example.`);
+    if (err.code === 'ENOENT') throw new ConfigError(`No ${file} here. Run \`npx @quasi-interactive/shaken init\` to write an example.`);
     throw new ConfigError(`${file} isn't valid YAML: ${err.message}`);
   }
   const res = ConfigSchema.safeParse(raw);

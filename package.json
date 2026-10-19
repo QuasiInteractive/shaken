@@ -1,5 +1,5 @@
 {
-  "name": "shaken",
+  "name": "@quasi-interactive/shaken",
   "version": "0.1.1",
   "description": "車検 Roadworthy inspections for AI agents: golden cases, cheap checks first, an LLM judge last, pass rates over repeated runs, and a failed build when your agent drifts.",
   "type": "module",
@@ -51,5 +51,8 @@
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

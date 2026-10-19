@@ -1,4 +1,4 @@
-# Quick start: no model, no API key. From this folder: npx shaken
+# Quick start: no model, no API key. From this folder: npx @quasi-interactive/shaken
 vehicle:
   name: quickstart-triage
   command: node agent.mjs

@@ -1,6 +1,6 @@
 // A small support-triage agent for the example inspection. Reads {"message": "..."} on stdin,
 // asks a local Ollama model to triage it, prints {"category", "urgent", "reply"}.
-// Change the prompt or the model and run `npx shaken` to see whether it's still roadworthy.
+// Change the prompt or the model and run `npx @quasi-interactive/shaken` to see whether it's still roadworthy.
 const MODEL = process.env.TRIAGE_MODEL ?? 'qwen3.5:9b';
 const OLLAMA = process.env.OLLAMA_URL ?? 'http://localhost:11434';
 

@@ -51,8 +51,8 @@ Items pick a category with `part:`; uncategorised items go under Steering.
 
 ## Interfaces
 
-- CLI: `npx shaken` (inspect), `npx shaken certify` (inspect and write a new certificate),
-  `npx shaken init` (writes an example `shaken.yml`).
+- CLI: `npx @quasi-interactive/shaken` (inspect), `npx @quasi-interactive/shaken certify` (inspect and write a new certificate),
+  `npx @quasi-interactive/shaken init` (writes an example `shaken.yml`).
 - GitHub Action: `uses: QuasiInteractive/shaken@v1` with `config:` input; writes the job summary
   and fails the job on 不合格.
 
